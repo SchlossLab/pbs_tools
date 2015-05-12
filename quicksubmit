@@ -1,0 +1,89 @@
+#!/usr/bin/python2.7
+'''USAGE: quicksubmit.py "command -l parameter" [options]
+This script submits your one line command as a job to the pbs job scheduler.
+'''
+import subprocess as s
+import sys
+import argparse
+
+def submitjob(job_name, command, subtype = "qsub", walltime = "10:00:00", cput = "10:00:00", pm = "nodes=1:ppn=1:mem=2gb", mailto = "", afterok = "", verbose = False):
+    '''USAGE: submitjob('my_job', 'echo "hello world!"')
+    This function submits a job to the pbs job scheduler. You may need to alter the job_string as your pbs implementation requires.
+
+    '''
+    job_string = """#!/bin/bash
+    #PBS -N {0}
+    #PBS -l walltime={1}
+    #PBS -l {2}
+    #PBS -l cput={4}
+    #PBS -j oe
+    #PBS -o ./{0}.$PBS_JOBID.pbsout
+    #PBS -V
+    #PBS -q first
+    #PBS -m abe {5}
+    {aok}
+
+    echo "ncpus-2.pbs"
+    cat $PBS_NODEFILE
+    qstat -f $PBS_JOBID
+
+    cd $PBS_O_WORKDIR
+
+    NCPUS=`wc -l $PBS_NODEFILE | awk '{{print $1}}'`
+
+    {3}
+    echo "qsub working directory absolute is"
+    echo $PBS_O_WORKDIR
+    exit""".format(job_name, walltime, pm, command, cput, mailto, aok="#PBS -W depend=afterok:%s" %(afterok) if afterok != "" else "")
+
+    # Send job_string to qsub
+
+    p = s.Popen(subtype, stdin=s.PIPE, stdout=s.PIPE, stderr=s.STDOUT)
+    #p.stdin.write(job_string)
+    out, err = p.communicate(job_string)
+
+    # Print your job and the response to the screen
+    if verbose:
+        print job_string
+        print out
+
+    #returns job ID
+    return out.split(".")[0]
+
+#class MyParser(argparse.ArgumentParser):
+#    def error(self, message):
+#        sys.stderr.write('error: %s\n' % message)
+#        self.print_help()
+#        sys.exit(2)
+
+parser = argparse.ArgumentParser(description='Quickly submit jobs to pbs. Submit multiple, dependent jobs at once using ;; as the separator.')
+#parser = MyParser()
+parser.add_argument('cmd', nargs='+')
+parser.add_argument('--walltime', default="1:00:00", help='how long the job should run in wall time')
+parser.add_argument('--cput', default="1:00:00", help='how long the job should run in cpu time')
+parser.add_argument('--pm', default="nodes=1:ppn=1,mem=2gb", help='processors and memory limits in the form of nodes=1:ppn=1,mem=2gb')
+parser.add_argument('--mailto', default="", help='email address to which job status should be sent')
+parser.add_argument('--afterok', default="", help='run this job after JOBID has completed successfully')
+parser.add_argument('--jobname', default="", help='name of your job')
+
+if len(sys.argv)==1:
+    parser.print_help()
+    sys.exit(1)
+
+
+args = parser.parse_args()
+
+joblist = []
+
+#print args
+cmd = " ".join(args.cmd)
+
+cmdlist = []
+cmdlist = cmd.split(";;")
+afterok = args.afterok
+for com in cmdlist:
+    print "submitting command: ", com
+    joblist.append(submitjob(job_name = args.jobname if args.jobname !="" else cmd.split()[0], command = com, walltime = args.walltime, cput = args.cput, pm = args.pm, mailto = args.mailto, afterok = afterok))
+    afterok=joblist[-1]
+
+print "Job id(s) ", joblist
