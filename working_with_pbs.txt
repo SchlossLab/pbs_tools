@@ -1,0 +1,8 @@
+delete all queued jobs : 
+qselect -u $USER -s Q | xargs qdel
+
+delete all running jobs: 
+qselect -u $USER -s R | xargs qdel
+
+delete all jobs starting with "SRS"
+qstat -u $USER | awk '{if($4~"SRS") {split($1,a,"."); cmd="qdel " a[1]; system(cmd); close(cmd)}}'
