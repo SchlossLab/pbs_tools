@@ -6,7 +6,7 @@ import subprocess as s
 import sys
 import argparse
 
-def submitjob(job_name, command, subtype = "qsub", walltime = "10:00:00", cput = "10:00:00", pm = "nodes=1:ppn=1:mem=2gb", mailto = "", afterok = "", verbose = False):
+def submitjob(job_name, command, subtype = "qsub", walltime = "10:00:00", cput = "10:00:00", pm = "nodes=1:ppn=1,mem=2gb", mailto = "", afterok = "", verbose = False):
     '''USAGE: submitjob('my_job', 'echo "hello world!"')
     This function submits a job to the pbs job scheduler. You may need to alter the job_string as your pbs implementation requires.
 
